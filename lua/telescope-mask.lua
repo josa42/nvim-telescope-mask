@@ -39,6 +39,8 @@ local mask_add = function()
   vim.cmd.enew()
   mask.buf = vim.api.nvim_get_current_buf()
 
+  vim.opt_local.buftype = 'nofile'
+  vim.opt_local.list = false
   vim.opt_local.winblend = config.blend
   vim.opt_local.winhighlight = { Normal = 'Normal' }
 end
@@ -59,7 +61,6 @@ function M.config(opts)
 end
 
 function M.setup()
-  print('setup')
   vim.api.nvim_create_autocmd('BufLeave', {
     group = group,
     callback = function(opts)
