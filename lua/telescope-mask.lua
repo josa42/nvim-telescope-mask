@@ -7,8 +7,12 @@ local config = {
 
 local mask_remove = function()
   if mask then
-    vim.api.nvim_win_close(mask.win, true)
-    vim.api.nvim_buf_delete(mask.buf, { force = true })
+    if vim.api.nvim_win_is_valid(mask.win) then
+      vim.api.nvim_win_close(mask.win, true)
+    end
+    if vim.api.nvim_buf_is_valid(mask.buf) then
+      vim.api.nvim_buf_delete(mask.buf, { force = true })
+    end
     mask = nil
   end
 end
@@ -16,11 +20,10 @@ end
 local mask_add = function()
   mask_remove()
 
-  local editor = vim.api.nvim_list_uis()[1]
-
   mask = {}
 
-  mask.win = vim.api.nvim_open_win(0, true, {
+  mask.buf = vim.api.nvim_create_buf(false, true)
+  mask.win = vim.api.nvim_open_win(mask.buf, false, {
     -- fixed.
     relative = 'editor',
     focusable = true,
@@ -28,68 +31,43 @@ local mask_add = function()
     -- variables.
     row = 0,
     col = 0,
-    height = editor.height,
-    width = editor.width,
+    height = vim.o.lines,
+    width = vim.o.columns,
     border = 'none',
 
     style = 'minimal',
     noautocmd = true,
   })
 
-  vim.cmd.enew()
-  mask.buf = vim.api.nvim_get_current_buf()
-
-  vim.opt_local.buftype = 'nofile'
-  vim.opt_local.list = false
-  vim.opt_local.winblend = config.blend
-  vim.opt_local.winhighlight = { Normal = 'Normal' }
+  vim.wo[mask.win].list = false
+  vim.wo[mask.win].winblend = config.blend
+  vim.wo[mask.win].winhighlight = 'Normal:Normal'
 end
 
 local mask_resize = function()
-  if mask then
-    local editor = vim.api.nvim_list_uis()[1]
-    vim.api.nvim_win_set_width(mask.win, editor.width)
-    vim.api.nvim_win_set_height(mask.win, editor.height)
+  if mask and vim.api.nvim_win_is_valid(mask.win) then
+    vim.api.nvim_win_set_config(mask.win, {
+      relative = 'editor',
+      row = 0,
+      col = 0,
+      height = vim.o.lines,
+      width = vim.o.columns,
+    })
   end
 end
 
-local group = vim.api.nvim_create_augroup('telescope-mask', { clear = true })
-
 function M.config(opts)
   -- TODO input validation
-  config = vim.tbl_extend('force', config, opts)
+  config = vim.tbl_extend('force', config, opts or {})
 end
 
 function M.setup()
+  local group = vim.api.nvim_create_augroup('telescope-mask', { clear = true })
+
   vim.api.nvim_create_autocmd('BufLeave', {
     group = group,
     callback = function(opts)
-      local filetype = vim.api.nvim_buf_get_option(opts.buf, 'filetype')
-      if filetype == 'TelescopePrompt' then
-        mask_remove()
-      end
-    end,
-  })
-
-  vim.api.nvim_create_autocmd('User', {
-    group = group,
-    pattern = 'TelescopeFindPre',
-    callback = function()
-      mask_add()
-    end,
-  })
-
-  vim.api.nvim_create_autocmd('VimResized', {
-    group = group,
-    callback = function()
-      mask_resize()
-    end,
-  })
-  vim.api.nvim_create_autocmd('BufLeave', {
-    group = group,
-    callback = function(opts)
-      local filetype = vim.api.nvim_buf_get_option(opts.buf, 'filetype')
-      if filetype == 'TelescopePrompt' then
+      if vim.bo[opts.buf].filetype == 'TelescopePrompt' then
         mask_remove()
       end
     end,
