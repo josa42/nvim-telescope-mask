@@ -26,7 +26,7 @@ local mask_add = function()
   mask.win = vim.api.nvim_open_win(mask.buf, false, {
     -- fixed.
     relative = 'editor',
-    focusable = true,
+    focusable = false,
     zindex = 10,
     -- variables.
     row = 0,
